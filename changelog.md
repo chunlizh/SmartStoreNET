@@ -3,28 +3,35 @@
 ## SmartStore.NET 2.5.1
 
 ### Highlights
-* #637 Integrate PayPal PLUS Provider
+* #637 Integrated PayPal PLUS payment Provider
+* Major improvements in Importer: better field mapping, higher performance, bug fixes etc.
 
 ### New Features
+* #637 Integrated PayPal PLUS payment Provider
+* #961 Fix "Open Redirection Vulnerability"
 * #571 Option to display another checkbox on confirm page to let the customer accept that his email address can be handed over to a third party
 * #870 Implement address import for customers (both billing & shipping address)
 * #886 Add setting to hide manufacturer images on product detail page and to hide default image for manufacturers
 * Import localized SEO names for product and categories
 * #477 Implement option to specify the number of exported and imported pictures
+* #859 Make checkout attributes suitable for multi-stores
 
 ### Improvements
+* Major improvements in Importer: better field mapping, higher performance, bug fixes etc.
 * (Dev) Publishing SmartStore.Web from within Visual Studio now deploys the project correctly. No need to execute ClickToBuild.cmd anymore. Just publish directly to any target, including Azure.
 * Localization & SEO: language switcher now takes language specific SEO slugs into account when building links
 * Exports the product detail link including the attribute query string when exporting attribute combinations
 * #918 Compare products: Display base price information
 * Export email attachments needs to be stored in database because the temp file may not exist anymore when sending the email
 * #913 Use HTML5 Input types (tel, email)
+* Added paging to frontend order list
+* Added paging to backend checkout attribute list
 
 ### Bugfixes
 * Fixed ajax cache issue when saving payment or shipping restrictions. Internet Explorer showed the old data state (before storage).
 * "The provider failed at the Execute method: Member 'CurrentValues' cannot be called for the entity of type 'Product'" when exporting product attribute combinations
 * Bundles without selected attributes could throw an exception on product detail page
-* GMC feed did not export the product type (category path)
+* GMC feed did not export the product type and Billiger did not export shop_cat (category path)
 * The error message of a payment provider when capturing a payment was not displayed
 * Adding new shipping method threw an exception
 * Attribute Values: Assigning IsPreselected to more than one value causes an error
@@ -36,6 +43,9 @@
 * Customer import: Creates customer role duplicates for inserted customers
 * GMC feed does not generate the sale price if the sale price is set for a future date
 * Mobile devices: Fixed "Uncaught Error: Syntax error, unrecognized expression: :nth-child"
+* Download nor sample download were removable when editing product
+* Copied product must not share sample download of source product. Could produce "The DELETE statement conflicted with the REFERENCE constraint 'FK_dbo.Product_dbo.Download_SampleDownloadId'".
+* #921 Specification attribute options with single quotation marks are causing a Javascript error
 
 
 ## SmartStore.NET 2.5

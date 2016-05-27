@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Mime;
+using System.Linq;
 using SmartStore.Core.Domain.DataExchange;
 using SmartStore.Core.IO;
 using SmartStore.Utilities;
@@ -10,10 +11,15 @@ using SmartStore.Core;
 using Autofac;
 using SmartStore.Services.Localization;
 using SmartStore.Core.Domain.Localization;
+using SmartStore.Core.Domain.Seo;
+using SmartStore.Services.Seo;
+using SmartStore.Core.Data;
+using SmartStore.Services.Stores;
+using SmartStore.Core.Domain.Stores;
 
 namespace SmartStore.Services.DataExchange.Import
 {
-	public abstract class EntityImporterBase<TEntity> : IEntityImporter where TEntity : BaseEntity
+	public abstract class EntityImporterBase : IEntityImporter
 	{
 		private const string _imageDownloadFolder = @"Content\DownloadedImages";
 
@@ -138,21 +144,159 @@ namespace SmartStore.Services.DataExchange.Import
 			}
 		}
 
-		protected IEnumerable<string> ResolveLocalizedProperties(ImportDataSegmenter segmenter)
+		protected virtual int ProcessLocalizations<TEntity>(
+			ImportExecuteContext context,
+			IEnumerable<ImportRow<TEntity>> batch,
+			IDictionary<string, Expression<Func<TEntity, string>>> localizableProperties) where TEntity : BaseEntity, ILocalizedEntity
 		{
+			Guard.ArgumentNotNull(() => context);
+			Guard.ArgumentNotNull(() => batch);
+			Guard.ArgumentNotNull(() => localizableProperties);
+
 			// Perf: determine whether our localizable properties actually have 
-			// counterparts in the source BEFORE import begins. This way we spare ourself
+			// counterparts in the source BEFORE import batch begins. This way we spare ourself
 			// to query over and over for values.
-			var localizableProperties = GetLocalizableProperties();
-			foreach (var kvp in localizableProperties)
+			var localizedProps = (from kvp in localizableProperties
+								  where context.DataSegmenter.GetColumnIndexes(kvp.Key).Length > 0
+								  select kvp.Key).ToArray();
+
+			if (localizedProps.Length == 0)
 			{
-				if (segmenter.GetColumnIndexes(kvp.Key).Length > 0)
+				return 0;
+			}
+
+			var localizedEntityService = context.Services.Resolve<ILocalizedEntityService>();
+
+			bool shouldSave = false;
+
+			foreach (var row in batch)
+			{
+				foreach (var prop in localizedProps)
 				{
-					yield return kvp.Key;
+					var lambda = localizableProperties[prop];
+					foreach (var lang in context.Languages)
+					{
+						var code = lang.UniqueSeoCode;
+						string value;
+
+						if (row.TryGetDataValue(prop /* ColumnName */, code, out value))
+						{
+							localizedEntityService.SaveLocalizedValue(row.Entity, lambda, value, lang.Id);
+							shouldSave = true;
+						}
+					}
 				}
 			}
+
+			if (shouldSave)
+			{
+				// commit whole batch at once
+				return context.Services.DbContext.SaveChanges();
+			}
+
+			return 0;
 		}
 
-		protected abstract IDictionary<string, Expression<Func<TEntity, string>>> GetLocalizableProperties();
+		protected virtual int ProcessStoreMappings<TEntity>(
+			ImportExecuteContext context,
+			IEnumerable<ImportRow<TEntity>> batch) where TEntity : BaseEntity, IStoreMappingSupported
+		{
+			var storeMappingService = context.Services.Resolve<IStoreMappingService>();
+			var storeMappingRepository = context.Services.Resolve<IRepository<StoreMapping>>();
+
+			storeMappingRepository.AutoCommitEnabled = false;
+
+			foreach (var row in batch)
+			{
+				var storeIds = row.GetDataValue<List<int>>("StoreIds");
+				if (!storeIds.IsNullOrEmpty())
+				{
+					storeMappingService.SaveStoreMappings(row.Entity, storeIds.ToArray());
+				}
+			}
+
+			// commit whole batch at once
+			return context.Services.DbContext.SaveChanges();
+		}
+
+		protected virtual int ProcessSlugs<TEntity>(
+			ImportExecuteContext context,
+			IEnumerable<ImportRow<TEntity>> batch,
+			string entityName) where TEntity : BaseEntity, ISlugSupported
+		{
+			var slugMap = new Dictionary<string, UrlRecord>();
+			UrlRecord urlRecord = null;
+
+			var urlRecordService = context.Services.Resolve<IUrlRecordService>();
+			var urlRecordRepository = context.Services.Resolve<IRepository<UrlRecord>>();
+			var seoSettings = context.Services.Resolve<SeoSettings>();
+
+			Func<string, UrlRecord> slugLookup = ((s) =>
+			{
+				return (slugMap.ContainsKey(s) ? slugMap[s] : null);
+			});
+
+			foreach (var row in batch)
+			{
+				try
+				{
+					string seName = null;
+					string localizedName = null;
+
+					if (row.TryGetDataValue("SeName", out seName) || row.IsNew || row.NameChanged)
+					{
+						seName = row.Entity.ValidateSeName(seName, row.EntityDisplayName, true, urlRecordService, seoSettings, extraSlugLookup: slugLookup);
+
+						if (row.IsNew)
+						{
+							// dont't bother validating SeName for new entities.
+							urlRecord = new UrlRecord
+							{
+								EntityId = row.Entity.Id,
+								EntityName = entityName,
+								Slug = seName,
+								LanguageId = 0,
+								IsActive = true,
+							};
+							urlRecordRepository.Insert(urlRecord);
+						}
+						else
+						{
+							urlRecord = urlRecordService.SaveSlug(row.Entity, seName, 0);
+						}
+
+						if (urlRecord != null)
+						{
+							// a new record was inserted to the store: keep track of it for this batch.
+							slugMap[seName] = urlRecord;
+						}
+					}
+
+					// process localized SeNames
+					foreach (var lang in context.Languages)
+					{
+						var hasSeName = row.TryGetDataValue("SeName", lang.UniqueSeoCode, out seName);
+						var hasLocalizedName = row.TryGetDataValue("Name", lang.UniqueSeoCode, out localizedName);
+
+						if (hasSeName || hasLocalizedName)
+						{
+							seName = row.Entity.ValidateSeName(seName, localizedName, false, urlRecordService, seoSettings, lang.Id, slugLookup);
+							urlRecord = urlRecordService.SaveSlug(row.Entity, seName, lang.Id);
+							if (urlRecord != null)
+							{
+								slugMap[seName] = urlRecord;
+							}
+						}
+					}
+				}
+				catch (Exception exception)
+				{
+					context.Result.AddWarning(exception.Message, row.GetRowInfo(), "SeName");
+				}
+			}
+
+			// commit whole batch at once
+			return context.Services.DbContext.SaveChanges();
+		}
 	}
 }

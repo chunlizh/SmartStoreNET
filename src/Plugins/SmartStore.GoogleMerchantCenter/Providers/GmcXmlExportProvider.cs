@@ -153,7 +153,7 @@ namespace SmartStore.GoogleMerchantCenter.Providers
 			get { return "XML"; }
 		}
 
-		protected override void Export(IExportExecuteContext context)
+		protected override void Export(ExportExecuteContext context)
 		{
 			dynamic currency = context.Currency;
 			string measureWeightSystemKey = "";
@@ -177,9 +177,9 @@ namespace SmartStore.GoogleMerchantCenter.Providers
 				writer.WriteElementString("link", "http://base.google.com/base/");
 				writer.WriteElementString("description", "Information about products");
 
-				while (context.Abort == DataExchangeAbortion.None && context.Segmenter.ReadNextSegment())
+				while (context.Abort == DataExchangeAbortion.None && context.DataSegmenter.ReadNextSegment())
 				{
-					var segment = context.Segmenter.CurrentSegment;
+					var segment = context.DataSegmenter.CurrentSegment;
 
 					int[] productIds = segment.Select(x => (int)((dynamic)x).Id).ToArray();
 					var googleProducts = _googleFeedService.GetGoogleProductRecords(productIds);

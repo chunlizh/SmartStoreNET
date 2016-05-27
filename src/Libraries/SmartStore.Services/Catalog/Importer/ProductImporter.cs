@@ -8,38 +8,28 @@ using SmartStore.Core.Async;
 using SmartStore.Core.Data;
 using SmartStore.Core.Domain.Catalog;
 using SmartStore.Core.Domain.DataExchange;
-using SmartStore.Core.Domain.Seo;
-using SmartStore.Core.Domain.Stores;
 using SmartStore.Core.Events;
 using SmartStore.Services.DataExchange.Import;
 using SmartStore.Services.Localization;
 using SmartStore.Services.Media;
-using SmartStore.Services.Seo;
-using SmartStore.Services.Stores;
 using SmartStore.Utilities;
-using SmartStore.Core.Domain.Localization;
 
 namespace SmartStore.Services.Catalog.Importer
 {
-	public class ProductImporter : EntityImporterBase<Product>
+	public class ProductImporter : EntityImporterBase
 	{
 		private readonly IRepository<ProductPicture> _productPictureRepository;
 		private readonly IRepository<ProductManufacturer> _productManufacturerRepository;
 		private readonly IRepository<ProductCategory> _productCategoryRepository;
-		private readonly IRepository<UrlRecord> _urlRecordRepository;
 		private readonly IRepository<Product> _productRepository;
-		private readonly IRepository<StoreMapping> _storeMappingRepository;
 		private readonly ICommonServices _services;
 		private readonly ILocalizedEntityService _localizedEntityService;
 		private readonly IPictureService _pictureService;
 		private readonly IManufacturerService _manufacturerService;
 		private readonly ICategoryService _categoryService;
 		private readonly IProductService _productService;
-		private readonly IUrlRecordService _urlRecordService;
 		private readonly IProductTemplateService _productTemplateService;
-		private readonly IStoreMappingService _storeMappingService;
 		private readonly FileDownloadManager _fileDownloadManager;
-		private readonly SeoSettings _seoSettings;
 
 		private static readonly Dictionary<string, Expression<Func<Product, string>>> _localizableProperties = new Dictionary<string, Expression<Func<Product, string>>>
 		{
@@ -56,49 +46,414 @@ namespace SmartStore.Services.Catalog.Importer
 			IRepository<ProductPicture> productPictureRepository,
 			IRepository<ProductManufacturer> productManufacturerRepository,
 			IRepository<ProductCategory> productCategoryRepository,
-			IRepository<UrlRecord> urlRecordRepository,
 			IRepository<Product> productRepository,
-			IRepository<StoreMapping> storeMappingRepository,
 			ICommonServices services,
 			ILocalizedEntityService localizedEntityService,
 			IPictureService pictureService,
 			IManufacturerService manufacturerService,
 			ICategoryService categoryService,
 			IProductService productService,
-			IUrlRecordService urlRecordService,
 			IProductTemplateService productTemplateService,
-			IStoreMappingService storeMappingService,
-			FileDownloadManager fileDownloadManager,
-			SeoSettings seoSettings)
+			FileDownloadManager fileDownloadManager)
 		{
 			_productPictureRepository = productPictureRepository;
 			_productManufacturerRepository = productManufacturerRepository;
 			_productCategoryRepository = productCategoryRepository;
-			_urlRecordRepository = urlRecordRepository;
 			_productRepository = productRepository;
-			_storeMappingRepository = storeMappingRepository;
 			_services = services;
 			_localizedEntityService = localizedEntityService;
 			_pictureService = pictureService;
 			_manufacturerService = manufacturerService;
 			_categoryService = categoryService;
 			_productService = productService;
-			_urlRecordService = urlRecordService;
 			_productTemplateService = productTemplateService;
-			_storeMappingService = storeMappingService;
 			_fileDownloadManager = fileDownloadManager;
-			_seoSettings = seoSettings;
 		}
 
-		private int? ZeroToNull(object value, CultureInfo culture)
+		protected override void Import(ImportExecuteContext context)
 		{
-			int result;
-			if (CommonHelper.TryConvert<int>(value, culture, out result) && result > 0)
+			var srcToDestId = new Dictionary<int, ImportProductMapping>();
+
+			var templateViewPaths = _productTemplateService.GetAllProductTemplates().ToDictionarySafe(x => x.ViewPath, x => x.Id);
+
+			using (var scope = new DbContextScope(ctx: _productRepository.Context, autoDetectChanges: false, proxyCreation: false, validateOnSave: false))
 			{
-				return result;
+				var segmenter = context.DataSegmenter;
+
+				Initialize(context);
+
+				while (context.Abort == DataExchangeAbortion.None && segmenter.ReadNextBatch())
+				{
+					var batch = segmenter.GetCurrentBatch<Product>();
+
+					// Perf: detach all entities
+					_productRepository.Context.DetachAll(false);
+
+					context.SetProgress(segmenter.CurrentSegmentFirstRowIndex - 1, segmenter.TotalRows);
+
+					// ===========================================================================
+					// 1.) Import products
+					// ===========================================================================
+					try
+					{
+						ProcessProducts(context, batch, templateViewPaths, srcToDestId);
+					}
+					catch (Exception exception)
+					{
+						context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessProducts");
+					}
+
+					// reduce batch to saved (valid) products.
+					// No need to perform import operations on errored products.
+					batch = batch.Where(x => x.Entity != null && !x.IsTransient).ToArray();
+
+					// update result object
+					context.Result.NewRecords += batch.Count(x => x.IsNew && !x.IsTransient);
+					context.Result.ModifiedRecords += batch.Count(x => !x.IsNew && !x.IsTransient);
+
+					// ===========================================================================
+					// 2.) Import SEO Slugs
+					// IMPORTANT: Unlike with Products AutoCommitEnabled must be TRUE,
+					//            as Slugs are going to be validated against existing ones in DB.
+					// ===========================================================================
+					if (segmenter.HasColumn("SeName", true) || batch.Any(x => x.IsNew || x.NameChanged))
+					{
+						try
+						{
+							_productRepository.Context.AutoDetectChangesEnabled = true;
+							ProcessSlugs(context, batch, typeof(Product).Name);
+						}
+						catch (Exception exception)
+						{
+							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessSlugs");
+						}
+						finally
+						{
+							_productRepository.Context.AutoDetectChangesEnabled = false;
+						}
+					}
+
+					// ===========================================================================
+					// 3.) Import StoreMappings
+					// ===========================================================================
+					if (segmenter.HasColumn("StoreIds"))
+					{
+						try
+						{
+							ProcessStoreMappings(context, batch);
+						}
+						catch (Exception exception)
+						{
+							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessStoreMappings");
+						}
+					}
+
+					// ===========================================================================
+					// 4.) Import Localizations
+					// ===========================================================================
+					try
+					{
+						ProcessLocalizations(context, batch, _localizableProperties);
+					}
+					catch (Exception exception)
+					{
+						context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessLocalizations");
+					}
+
+					// ===========================================================================
+					// 5.) Import product category mappings
+					// ===========================================================================
+					if (segmenter.HasColumn("CategoryIds"))
+					{
+						try
+						{
+							ProcessProductCategories(context, batch);
+						}
+						catch (Exception exception)
+						{
+							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessProductCategories");
+						}
+					}
+
+					// ===========================================================================
+					// 6.) Import product manufacturer mappings
+					// ===========================================================================
+					if (segmenter.HasColumn("ManufacturerIds"))
+					{
+						try
+						{
+							ProcessProductManufacturers(context, batch);
+						}
+						catch (Exception exception)
+						{
+							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessProductManufacturers");
+						}
+					}
+
+					// ===========================================================================
+					// 7.) Import product picture mappings
+					// ===========================================================================
+					if (segmenter.HasColumn("ImageUrls"))
+					{
+						try
+						{
+							ProcessProductPictures(context, batch);
+						}
+						catch (Exception exception)
+						{
+							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessProductPictures");
+						}
+					}
+				}
+
+				// ===========================================================================
+				// 8.) Map parent id of inserted products
+				// ===========================================================================
+				if (srcToDestId.Any() && segmenter.HasColumn("Id") && segmenter.HasColumn("ParentGroupedProductId") && !segmenter.IsIgnored("ParentGroupedProductId"))
+				{
+					segmenter.Reset();
+
+					while (context.Abort == DataExchangeAbortion.None && segmenter.ReadNextBatch())
+					{
+						var batch = segmenter.GetCurrentBatch<Product>();
+
+						_productRepository.Context.DetachAll(false);
+
+						try
+						{
+							ProcessProductMappings(context, batch, srcToDestId);
+						}
+						catch (Exception exception)
+						{
+							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessParentMappings");
+						}
+					}
+				}
+			}
+		}
+
+		protected virtual int ProcessProducts(
+			ImportExecuteContext context,
+			IEnumerable<ImportRow<Product>> batch,
+			Dictionary<string, int> templateViewPaths,
+			Dictionary<int, ImportProductMapping> srcToDestId)
+		{
+			_productRepository.AutoCommitEnabled = false;
+
+			Product lastInserted = null;
+			Product lastUpdated = null;
+			var defaultTemplateId = templateViewPaths["ProductTemplate.Simple"];
+
+			foreach (var row in batch)
+			{
+				Product product = null;
+				var id = row.GetDataValue<int>("Id");
+				
+				foreach (var keyName in context.KeyFieldNames)
+				{
+					var keyValue = row.GetDataValue<string>(keyName);
+
+					if (keyValue.HasValue() || id > 0)
+					{
+						switch (keyName)
+						{
+							case "Id":
+								product = _productService.GetProductById(id);
+								break;
+							case "Sku":
+								product = _productService.GetProductBySku(keyValue);
+								break;
+							case "Gtin":
+								product = _productService.GetProductByGtin(keyValue);
+								break;
+							case "ManufacturerPartNumber":
+								product = _productService.GetProductByManufacturerPartNumber(keyValue);
+								break;
+							case "Name":
+								product = _productService.GetProductByName(keyValue);
+								break;
+						}
+					}
+
+					if (product != null)
+						break;
+				}
+
+				if (product == null)
+				{
+					if (context.UpdateOnly)
+					{
+						++context.Result.SkippedRecords;
+						continue;
+					}
+
+					// a Name is required for new products.
+					if (!row.HasDataValue("Name"))
+					{
+						++context.Result.SkippedRecords;
+						context.Result.AddError("The 'Name' field is required for new products. Skipping row.", row.GetRowInfo(), "Name");
+						continue;
+					}
+
+					product = new Product();
+				}
+
+				var name = row.GetDataValue<string>("Name");
+
+				row.Initialize(product, name ?? product.Name);
+
+				if (!row.IsNew)
+				{
+					if (!product.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+					{
+						// Perf: use this later for SeName updates.
+						row.NameChanged = true;
+					}
+				}
+
+				row.SetProperty(context.Result, (x) => x.ProductTypeId, (int)ProductType.SimpleProduct);
+				row.SetProperty(context.Result, (x) => x.VisibleIndividually, true);
+				row.SetProperty(context.Result, (x) => x.Name);
+				row.SetProperty(context.Result, (x) => x.ShortDescription);
+				row.SetProperty(context.Result, (x) => x.FullDescription);
+				row.SetProperty(context.Result, (x) => x.AdminComment);
+				row.SetProperty(context.Result, (x) => x.ShowOnHomePage);
+				row.SetProperty(context.Result, (x) => x.HomePageDisplayOrder);
+				row.SetProperty(context.Result, (x) => x.MetaKeywords);
+				row.SetProperty(context.Result, (x) => x.MetaDescription);
+				row.SetProperty(context.Result, (x) => x.MetaTitle);
+				row.SetProperty(context.Result, (x) => x.AllowCustomerReviews, true);
+				row.SetProperty(context.Result, (x) => x.ApprovedRatingSum);
+				row.SetProperty(context.Result, (x) => x.NotApprovedRatingSum);
+				row.SetProperty(context.Result, (x) => x.ApprovedTotalReviews);
+				row.SetProperty(context.Result, (x) => x.NotApprovedTotalReviews);
+				row.SetProperty(context.Result, (x) => x.Published, true);
+				row.SetProperty(context.Result, (x) => x.Sku);
+				row.SetProperty(context.Result, (x) => x.ManufacturerPartNumber);
+				row.SetProperty(context.Result, (x) => x.Gtin);
+				row.SetProperty(context.Result, (x) => x.IsGiftCard);
+				row.SetProperty(context.Result, (x) => x.GiftCardTypeId);
+				row.SetProperty(context.Result, (x) => x.RequireOtherProducts);
+				row.SetProperty(context.Result, (x) => x.RequiredProductIds);	// TODO: global scope
+				row.SetProperty(context.Result, (x) => x.AutomaticallyAddRequiredProducts);
+				row.SetProperty(context.Result, (x) => x.IsDownload);
+				row.SetProperty(context.Result, (x) => x.DownloadId);
+				row.SetProperty(context.Result, (x) => x.UnlimitedDownloads, true);
+				row.SetProperty(context.Result, (x) => x.MaxNumberOfDownloads, 10);
+				row.SetProperty(context.Result, (x) => x.DownloadExpirationDays);
+				row.SetProperty(context.Result, (x) => x.DownloadActivationTypeId, 1);
+				row.SetProperty(context.Result, (x) => x.HasSampleDownload);
+				row.SetProperty(context.Result, (x) => x.SampleDownloadId, (int?)null, ZeroToNull);    // TODO: global scope
+				row.SetProperty(context.Result, (x) => x.HasUserAgreement);
+				row.SetProperty(context.Result, (x) => x.UserAgreementText);
+				row.SetProperty(context.Result, (x) => x.IsRecurring);
+				row.SetProperty(context.Result, (x) => x.RecurringCycleLength, 100);
+				row.SetProperty(context.Result, (x) => x.RecurringCyclePeriodId);
+				row.SetProperty(context.Result, (x) => x.RecurringTotalCycles, 10);
+				row.SetProperty(context.Result, (x) => x.IsShipEnabled, true);
+				row.SetProperty(context.Result, (x) => x.IsFreeShipping);
+				row.SetProperty(context.Result, (x) => x.AdditionalShippingCharge);
+				row.SetProperty(context.Result, (x) => x.IsEsd);
+				row.SetProperty(context.Result, (x) => x.IsTaxExempt);
+				row.SetProperty(context.Result, (x) => x.TaxCategoryId, 1);    // TODO: global scope
+				row.SetProperty(context.Result, (x) => x.ManageInventoryMethodId);
+				row.SetProperty(context.Result, (x) => x.StockQuantity, 10000);
+				row.SetProperty(context.Result, (x) => x.DisplayStockAvailability);
+				row.SetProperty(context.Result, (x) => x.DisplayStockQuantity);
+				row.SetProperty(context.Result, (x) => x.MinStockQuantity);
+				row.SetProperty(context.Result, (x) => x.LowStockActivityId);
+				row.SetProperty(context.Result, (x) => x.NotifyAdminForQuantityBelow, 1);
+				row.SetProperty(context.Result, (x) => x.BackorderModeId);
+				row.SetProperty(context.Result, (x) => x.AllowBackInStockSubscriptions);
+				row.SetProperty(context.Result, (x) => x.OrderMinimumQuantity, 1);
+				row.SetProperty(context.Result, (x) => x.OrderMaximumQuantity, 10000);
+				row.SetProperty(context.Result, (x) => x.AllowedQuantities);
+				row.SetProperty(context.Result, (x) => x.DisableBuyButton);
+				row.SetProperty(context.Result, (x) => x.DisableWishlistButton);
+				row.SetProperty(context.Result, (x) => x.AvailableForPreOrder);
+				row.SetProperty(context.Result, (x) => x.CallForPrice);
+				row.SetProperty(context.Result, (x) => x.Price);
+				row.SetProperty(context.Result, (x) => x.OldPrice);
+				row.SetProperty(context.Result, (x) => x.ProductCost);
+				row.SetProperty(context.Result, (x) => x.SpecialPrice);
+				row.SetProperty(context.Result, (x) => x.SpecialPriceStartDateTimeUtc);
+				row.SetProperty(context.Result, (x) => x.SpecialPriceEndDateTimeUtc);
+				row.SetProperty(context.Result, (x) => x.CustomerEntersPrice);
+				row.SetProperty(context.Result, (x) => x.MinimumCustomerEnteredPrice);
+				row.SetProperty(context.Result, (x) => x.MaximumCustomerEnteredPrice, 1000);
+				// HasTierPrices... ignore as long as no tier prices are imported
+				// LowestAttributeCombinationPrice... ignore as long as no combinations are imported
+				row.SetProperty(context.Result, (x) => x.Weight);
+				row.SetProperty(context.Result, (x) => x.Length);
+				row.SetProperty(context.Result, (x) => x.Width);
+				row.SetProperty(context.Result, (x) => x.Height);
+				row.SetProperty(context.Result, (x) => x.DisplayOrder);
+				row.SetProperty(context.Result, (x) => x.DeliveryTimeId);      // TODO: global scope
+				row.SetProperty(context.Result, (x) => x.QuantityUnitId);      // TODO: global scope
+				row.SetProperty(context.Result, (x) => x.BasePriceEnabled);
+				row.SetProperty(context.Result, (x) => x.BasePriceMeasureUnit);
+				row.SetProperty(context.Result, (x) => x.BasePriceAmount);
+				row.SetProperty(context.Result, (x) => x.BasePriceBaseAmount);
+				row.SetProperty(context.Result, (x) => x.BundleTitleText);
+				row.SetProperty(context.Result, (x) => x.BundlePerItemShipping);
+				row.SetProperty(context.Result, (x) => x.BundlePerItemPricing);
+				row.SetProperty(context.Result, (x) => x.BundlePerItemShoppingCart);
+				row.SetProperty(context.Result, (x) => x.AvailableStartDateTimeUtc);
+				row.SetProperty(context.Result, (x) => x.AvailableEndDateTimeUtc);
+				// With new entities, "LimitedToStores" is an implicit field, meaning
+				// it has to be set to true by code if it's absent but "StoreIds" exists.
+				row.SetProperty(context.Result, (x) => x.LimitedToStores, !row.GetDataValue<List<int>>("StoreIds").IsNullOrEmpty());
+
+				string tvp;
+				if (row.TryGetDataValue("ProductTemplateViewPath", out tvp, row.IsTransient))
+				{
+					product.ProductTemplateId = (tvp.HasValue() && templateViewPaths.ContainsKey(tvp) ? templateViewPaths[tvp] : defaultTemplateId);
+				}
+
+				row.SetProperty(context.Result, (x) => x.CreatedOnUtc, UtcNow);
+				product.UpdatedOnUtc = UtcNow;
+
+				if (id != 0 && !srcToDestId.ContainsKey(id))
+				{
+					srcToDestId.Add(id, new ImportProductMapping { Inserted = row.IsTransient });
+				}
+
+				if (row.IsTransient)
+				{
+					_productRepository.Insert(product);
+					lastInserted = product;
+				}
+				else
+				{
+					_productRepository.Update(product);
+					lastUpdated = product;
+				}
 			}
 
-			return (int?)null;
+			// commit whole batch at once
+			var num = _productRepository.Context.SaveChanges();
+
+			// get new product ids
+			foreach (var row in batch)
+			{
+				var id = row.GetDataValue<int>("Id");
+
+				if (id != 0 && srcToDestId.ContainsKey(id))
+					srcToDestId[id].DestinationId = row.Entity.Id;
+			}
+
+			// Perf: notify only about LAST insertion and update
+			if (lastInserted != null)
+			{
+				_services.EventPublisher.EntityInserted(lastInserted);
+			}
+
+			if (lastUpdated != null)
+			{
+				_services.EventPublisher.EntityUpdated(lastUpdated);
+			}
+
+			return num;
 		}
 
 		protected virtual int ProcessProductMappings(
@@ -346,357 +701,16 @@ namespace SmartStore.Services.Catalog.Importer
 			return num;
 		}
 
-		protected virtual int ProcessLocalizations(
-			ImportExecuteContext context,
-			IEnumerable<ImportRow<Product>> batch,
-			string[] localizedProperties)
+
+		private int? ZeroToNull(object value, CultureInfo culture)
 		{
-			if (localizedProperties.Length == 0)
+			int result;
+			if (CommonHelper.TryConvert<int>(value, culture, out result) && result > 0)
 			{
-				return 0;
-			}
-			
-			bool shouldSave = false;
-
-			foreach (var row in batch)
-			{
-				foreach (var prop in localizedProperties)
-				{
-					var lambda = _localizableProperties[prop];
-					foreach (var lang in context.Languages)
-					{
-						var code = lang.UniqueSeoCode;
-						string value;
-
-						if (row.TryGetDataValue(prop /* ColumnName */, code, out value))
-						{
-							_localizedEntityService.SaveLocalizedValue(row.Entity, lambda, value, lang.Id);
-							shouldSave = true;
-						}
-					}
-				}
+				return result;
 			}
 
-			if (shouldSave)
-			{
-				// commit whole batch at once
-				return context.Services.DbContext.SaveChanges();
-			}
-
-			return 0;
-		}
-
-		protected virtual int ProcessSlugs(
-			ImportExecuteContext context,
-			IEnumerable<ImportRow<Product>> batch)
-		{
-			var entityName = typeof(Product).Name;
-			var slugMap = new Dictionary<string, UrlRecord>();
-			UrlRecord urlRecord = null;
-
-			Func<string, UrlRecord> slugLookup = ((s) =>
-			{
-				return (slugMap.ContainsKey(s) ? slugMap[s] : null);
-			});
-
-			foreach (var row in batch)
-			{
-				try
-				{
-					string seName = null;
-					if (row.IsNew || row.NameChanged || row.TryGetDataValue("SeName", out seName))
-					{
-						seName = row.Entity.ValidateSeName(seName, row.Entity.Name, true, _urlRecordService, _seoSettings, extraSlugLookup: slugLookup);
-
-						if (row.IsNew)
-						{
-							// dont't bother validating SeName for new entities.
-							urlRecord = new UrlRecord
-							{
-								EntityId = row.Entity.Id,
-								EntityName = entityName,
-								Slug = seName,
-								LanguageId = 0,
-								IsActive = true,
-							};
-							_urlRecordRepository.Insert(urlRecord);
-						}
-						else
-						{
-							urlRecord = _urlRecordService.SaveSlug(row.Entity, seName, 0);
-						}
-
-						if (urlRecord != null)
-						{
-							// a new record was inserted to the store: keep track of it for this batch.
-							slugMap[seName] = urlRecord;
-						}
-					}
-
-					// process localized SeNames
-					foreach (var lang in context.Languages)
-					{
-						if (row.IsNew || row.NameChanged || row.TryGetDataValue("SeName", lang.UniqueSeoCode, out seName))
-						{
-							var localizedName = row.GetDataValue<string>("Name", lang.UniqueSeoCode);
-							seName = row.Entity.ValidateSeName(seName, localizedName, false, _urlRecordService, _seoSettings, lang.Id, slugLookup);
-							urlRecord = _urlRecordService.SaveSlug(row.Entity, seName, lang.Id);
-							if (urlRecord != null)
-							{
-								slugMap[seName] = urlRecord;
-							}
-						}
-					}
-				}
-				catch (Exception exception)
-				{
-					context.Result.AddWarning(exception.Message, row.GetRowInfo(), "SeName");
-				}
-			}
-
-			// commit whole batch at once
-			return _urlRecordRepository.Context.SaveChanges();
-		}
-
-		protected virtual int ProcessStoreMappings(ImportExecuteContext context, IEnumerable<ImportRow<Product>> batch)
-		{
-			_storeMappingRepository.AutoCommitEnabled = false;
-
-			foreach (var row in batch)
-			{
-				var storeIds = row.GetDataValue<List<int>>("StoreIds");
-				if (!storeIds.IsNullOrEmpty())
-				{
-					_storeMappingService.SaveStoreMappings(row.Entity, storeIds.ToArray());
-				}
-			}
-
-			// commit whole batch at once
-			return _services.DbContext.SaveChanges();
-		}
-
-		protected virtual int ProcessProducts(
-			ImportExecuteContext context,
-			IEnumerable<ImportRow<Product>> batch,
-			Dictionary<string, int> templateViewPaths,
-			Dictionary<int, ImportProductMapping> srcToDestId)
-		{
-			_productRepository.AutoCommitEnabled = false;
-
-			Product lastInserted = null;
-			Product lastUpdated = null;
-			var defaultTemplateId = templateViewPaths["ProductTemplate.Simple"];
-
-			foreach (var row in batch)
-			{
-				Product product = null;
-				var id = row.GetDataValue<int>("Id");
-				
-				foreach (var keyName in context.KeyFieldNames)
-				{
-					var keyValue = row.GetDataValue<string>(keyName);
-
-					if (keyValue.HasValue() || id > 0)
-					{
-						switch (keyName)
-						{
-							case "Id":
-								product = _productService.GetProductById(id);
-								break;
-							case "Sku":
-								product = _productService.GetProductBySku(keyValue);
-								break;
-							case "Gtin":
-								product = _productService.GetProductByGtin(keyValue);
-								break;
-							case "ManufacturerPartNumber":
-								product = _productService.GetProductByManufacturerPartNumber(keyValue);
-								break;
-							case "Name":
-								product = _productService.GetProductByName(keyValue);
-								break;
-						}
-					}
-
-					if (product != null)
-						break;
-				}
-
-				if (product == null)
-				{
-					if (context.UpdateOnly)
-					{
-						++context.Result.SkippedRecords;
-						continue;
-					}
-
-					// a Name is required for new products.
-					if (!row.HasDataValue("Name"))
-					{
-						++context.Result.SkippedRecords;
-						context.Result.AddError("The 'Name' field is required for new products. Skipping row.", row.GetRowInfo(), "Name");
-						continue;
-					}
-
-					product = new Product();
-				}
-
-				var name = row.GetDataValue<string>("Name");
-
-				row.Initialize(product, name ?? product.Name);
-
-				if (!row.IsNew)
-				{
-					if (!product.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
-					{
-						// Perf: use this later for SeName updates.
-						row.NameChanged = true;
-					}
-				}
-
-				row.SetProperty(context.Result, (x) => x.ProductTypeId, (int)ProductType.SimpleProduct);
-				row.SetProperty(context.Result, (x) => x.VisibleIndividually, true);
-				row.SetProperty(context.Result, (x) => x.Name);
-				row.SetProperty(context.Result, (x) => x.ShortDescription);
-				row.SetProperty(context.Result, (x) => x.FullDescription);
-				row.SetProperty(context.Result, (x) => x.AdminComment);
-				row.SetProperty(context.Result, (x) => x.ShowOnHomePage);
-				row.SetProperty(context.Result, (x) => x.HomePageDisplayOrder);
-				row.SetProperty(context.Result, (x) => x.MetaKeywords);
-				row.SetProperty(context.Result, (x) => x.MetaDescription);
-				row.SetProperty(context.Result, (x) => x.MetaTitle);
-				row.SetProperty(context.Result, (x) => x.AllowCustomerReviews, true);
-				row.SetProperty(context.Result, (x) => x.ApprovedRatingSum);
-				row.SetProperty(context.Result, (x) => x.NotApprovedRatingSum);
-				row.SetProperty(context.Result, (x) => x.ApprovedTotalReviews);
-				row.SetProperty(context.Result, (x) => x.NotApprovedTotalReviews);
-				row.SetProperty(context.Result, (x) => x.Published, true);
-				row.SetProperty(context.Result, (x) => x.Sku);
-				row.SetProperty(context.Result, (x) => x.ManufacturerPartNumber);
-				row.SetProperty(context.Result, (x) => x.Gtin);
-				row.SetProperty(context.Result, (x) => x.IsGiftCard);
-				row.SetProperty(context.Result, (x) => x.GiftCardTypeId);
-				row.SetProperty(context.Result, (x) => x.RequireOtherProducts);
-				row.SetProperty(context.Result, (x) => x.RequiredProductIds);	// TODO: global scope
-				row.SetProperty(context.Result, (x) => x.AutomaticallyAddRequiredProducts);
-				row.SetProperty(context.Result, (x) => x.IsDownload);
-				row.SetProperty(context.Result, (x) => x.DownloadId);
-				row.SetProperty(context.Result, (x) => x.UnlimitedDownloads, true);
-				row.SetProperty(context.Result, (x) => x.MaxNumberOfDownloads, 10);
-				row.SetProperty(context.Result, (x) => x.DownloadExpirationDays);
-				row.SetProperty(context.Result, (x) => x.DownloadActivationTypeId, 1);
-				row.SetProperty(context.Result, (x) => x.HasSampleDownload);
-				row.SetProperty(context.Result, (x) => x.SampleDownloadId, (int?)null, ZeroToNull);    // TODO: global scope
-				row.SetProperty(context.Result, (x) => x.HasUserAgreement);
-				row.SetProperty(context.Result, (x) => x.UserAgreementText);
-				row.SetProperty(context.Result, (x) => x.IsRecurring);
-				row.SetProperty(context.Result, (x) => x.RecurringCycleLength, 100);
-				row.SetProperty(context.Result, (x) => x.RecurringCyclePeriodId);
-				row.SetProperty(context.Result, (x) => x.RecurringTotalCycles, 10);
-				row.SetProperty(context.Result, (x) => x.IsShipEnabled, true);
-				row.SetProperty(context.Result, (x) => x.IsFreeShipping);
-				row.SetProperty(context.Result, (x) => x.AdditionalShippingCharge);
-				row.SetProperty(context.Result, (x) => x.IsEsd);
-				row.SetProperty(context.Result, (x) => x.IsTaxExempt);
-				row.SetProperty(context.Result, (x) => x.TaxCategoryId, 1);    // TODO: global scope
-				row.SetProperty(context.Result, (x) => x.ManageInventoryMethodId);
-				row.SetProperty(context.Result, (x) => x.StockQuantity, 10000);
-				row.SetProperty(context.Result, (x) => x.DisplayStockAvailability);
-				row.SetProperty(context.Result, (x) => x.DisplayStockQuantity);
-				row.SetProperty(context.Result, (x) => x.MinStockQuantity);
-				row.SetProperty(context.Result, (x) => x.LowStockActivityId);
-				row.SetProperty(context.Result, (x) => x.NotifyAdminForQuantityBelow, 1);
-				row.SetProperty(context.Result, (x) => x.BackorderModeId);
-				row.SetProperty(context.Result, (x) => x.AllowBackInStockSubscriptions);
-				row.SetProperty(context.Result, (x) => x.OrderMinimumQuantity, 1);
-				row.SetProperty(context.Result, (x) => x.OrderMaximumQuantity, 10000);
-				row.SetProperty(context.Result, (x) => x.AllowedQuantities);
-				row.SetProperty(context.Result, (x) => x.DisableBuyButton);
-				row.SetProperty(context.Result, (x) => x.DisableWishlistButton);
-				row.SetProperty(context.Result, (x) => x.AvailableForPreOrder);
-				row.SetProperty(context.Result, (x) => x.CallForPrice);
-				row.SetProperty(context.Result, (x) => x.Price);
-				row.SetProperty(context.Result, (x) => x.OldPrice);
-				row.SetProperty(context.Result, (x) => x.ProductCost);
-				row.SetProperty(context.Result, (x) => x.SpecialPrice);
-				row.SetProperty(context.Result, (x) => x.SpecialPriceStartDateTimeUtc);
-				row.SetProperty(context.Result, (x) => x.SpecialPriceEndDateTimeUtc);
-				row.SetProperty(context.Result, (x) => x.CustomerEntersPrice);
-				row.SetProperty(context.Result, (x) => x.MinimumCustomerEnteredPrice);
-				row.SetProperty(context.Result, (x) => x.MaximumCustomerEnteredPrice, 1000);
-				// HasTierPrices... ignore as long as no tier prices are imported
-				// LowestAttributeCombinationPrice... ignore as long as no combinations are imported
-				row.SetProperty(context.Result, (x) => x.Weight);
-				row.SetProperty(context.Result, (x) => x.Length);
-				row.SetProperty(context.Result, (x) => x.Width);
-				row.SetProperty(context.Result, (x) => x.Height);
-				row.SetProperty(context.Result, (x) => x.DisplayOrder);
-				row.SetProperty(context.Result, (x) => x.DeliveryTimeId);      // TODO: global scope
-				row.SetProperty(context.Result, (x) => x.QuantityUnitId);      // TODO: global scope
-				row.SetProperty(context.Result, (x) => x.BasePriceEnabled);
-				row.SetProperty(context.Result, (x) => x.BasePriceMeasureUnit);
-				row.SetProperty(context.Result, (x) => x.BasePriceAmount);
-				row.SetProperty(context.Result, (x) => x.BasePriceBaseAmount);
-				row.SetProperty(context.Result, (x) => x.BundleTitleText);
-				row.SetProperty(context.Result, (x) => x.BundlePerItemShipping);
-				row.SetProperty(context.Result, (x) => x.BundlePerItemPricing);
-				row.SetProperty(context.Result, (x) => x.BundlePerItemShoppingCart);
-				row.SetProperty(context.Result, (x) => x.AvailableStartDateTimeUtc);
-				row.SetProperty(context.Result, (x) => x.AvailableEndDateTimeUtc);
-				// With new entities, "LimitedToStores" is an implicit field, meaning
-				// it has to be set to true by code if it's absent but "StoreIds" exists.
-				row.SetProperty(context.Result, (x) => x.LimitedToStores, !row.GetDataValue<List<int>>("StoreIds").IsNullOrEmpty());
-
-				string tvp;
-				if (row.TryGetDataValue("ProductTemplateViewPath", out tvp, row.IsTransient))
-				{
-					product.ProductTemplateId = (tvp.HasValue() && templateViewPaths.ContainsKey(tvp) ? templateViewPaths[tvp] : defaultTemplateId);
-				}
-
-				row.SetProperty(context.Result, (x) => x.CreatedOnUtc, UtcNow);
-				product.UpdatedOnUtc = UtcNow;
-
-				if (id != 0 && !srcToDestId.ContainsKey(id))
-				{
-					srcToDestId.Add(id, new ImportProductMapping { Inserted = row.IsTransient });
-				}
-
-				if (row.IsTransient)
-				{
-					_productRepository.Insert(product);
-					lastInserted = product;
-				}
-				else
-				{
-					_productRepository.Update(product);
-					lastUpdated = product;
-				}
-			}
-
-			// commit whole batch at once
-			var num = _productRepository.Context.SaveChanges();
-
-			// get new product ids
-			foreach (var row in batch)
-			{
-				var id = row.GetDataValue<int>("Id");
-
-				if (id != 0 && srcToDestId.ContainsKey(id))
-					srcToDestId[id].DestinationId = row.Entity.Id;
-			}
-
-			// Perf: notify only about LAST insertion and update
-			if (lastInserted != null)
-			{
-				_services.EventPublisher.EntityInserted(lastInserted);
-			}
-
-			if (lastUpdated != null)
-			{
-				_services.EventPublisher.EntityUpdated(lastUpdated);
-			}
-
-			return num;
+			return (int?)null;
 		}
 
 		public static string[] SupportedKeyFields
@@ -712,175 +726,6 @@ namespace SmartStore.Services.Catalog.Importer
 			get
 			{
 				return new string[] { "Sku", "Gtin", "ManufacturerPartNumber" };
-			}
-		}
-
-		protected override IDictionary<string, Expression<Func<Product, string>>> GetLocalizableProperties()
-		{
-			return _localizableProperties;
-		}
-
-		protected override void Import(ImportExecuteContext context)
-		{
-			var srcToDestId = new Dictionary<int, ImportProductMapping>();
-
-			var templateViewPaths = _productTemplateService.GetAllProductTemplates().ToDictionarySafe(x => x.ViewPath, x => x.Id);
-
-			using (var scope = new DbContextScope(ctx: _productRepository.Context, autoDetectChanges: false, proxyCreation: false, validateOnSave: false))
-			{
-				var segmenter = context.DataSegmenter;
-				Initialize(context);
-
-				var localizedProperties = ResolveLocalizedProperties(segmenter).ToArray();
-
-				while (context.Abort == DataExchangeAbortion.None && segmenter.ReadNextBatch())
-				{
-					var batch = segmenter.GetCurrentBatch<Product>();
-
-					// Perf: detach all entities
-					_productRepository.Context.DetachAll(false);
-
-					context.SetProgress(segmenter.CurrentSegmentFirstRowIndex - 1, segmenter.TotalRows);
-
-					// ===========================================================================
-					// 1.) Import products
-					// ===========================================================================
-					try
-					{
-						ProcessProducts(context, batch, templateViewPaths, srcToDestId);
-					}
-					catch (Exception exception)
-					{
-						context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessProducts");
-					}
-
-					// reduce batch to saved (valid) products.
-					// No need to perform import operations on errored products.
-					batch = batch.Where(x => x.Entity != null && !x.IsTransient).ToArray();
-
-					// update result object
-					context.Result.NewRecords += batch.Count(x => x.IsNew && !x.IsTransient);
-					context.Result.ModifiedRecords += batch.Count(x => !x.IsNew && !x.IsTransient);
-
-					// ===========================================================================
-					// 2.) Import SEO Slugs
-					// IMPORTANT: Unlike with Products AutoCommitEnabled must be TRUE,
-					//            as Slugs are going to be validated against existing ones in DB.
-					// ===========================================================================
-					if (segmenter.HasColumn("SeName", true) || batch.Any(x => x.IsNew || x.NameChanged))
-					{
-						try
-						{
-							_productRepository.Context.AutoDetectChangesEnabled = true;
-
-							ProcessSlugs(context, batch);
-						}
-						catch (Exception exception)
-						{
-							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessSlugs");
-						}
-						finally
-						{
-							_productRepository.Context.AutoDetectChangesEnabled = false;
-						}
-					}
-
-					// ===========================================================================
-					// 3.) Import StoreMappings
-					// ===========================================================================
-					if (segmenter.HasColumn("StoreIds"))
-					{
-						try
-						{
-							ProcessStoreMappings(context, batch);
-						}
-						catch (Exception exception)
-						{
-							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessStoreMappings");
-						}
-					}
-
-					// ===========================================================================
-					// 4.) Import Localizations
-					// ===========================================================================
-					try
-					{
-						ProcessLocalizations(context, batch, localizedProperties);
-					}
-					catch (Exception exception)
-					{
-						context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessLocalizations");
-					}
-
-					// ===========================================================================
-					// 5.) Import product category mappings
-					// ===========================================================================
-					if (segmenter.HasColumn("CategoryIds"))
-					{
-						try
-						{
-							ProcessProductCategories(context, batch);
-						}
-						catch (Exception exception)
-						{
-							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessProductCategories");
-						}
-					}
-
-					// ===========================================================================
-					// 6.) Import product manufacturer mappings
-					// ===========================================================================
-					if (segmenter.HasColumn("ManufacturerIds"))
-					{
-						try
-						{
-							ProcessProductManufacturers(context, batch);
-						}
-						catch (Exception exception)
-						{
-							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessProductManufacturers");
-						}
-					}
-
-					// ===========================================================================
-					// 7.) Import product picture mappings
-					// ===========================================================================
-					if (segmenter.HasColumn("ImageUrls"))
-					{
-						try
-						{
-							ProcessProductPictures(context, batch);
-						}
-						catch (Exception exception)
-						{
-							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessProductPictures");
-						}
-					}
-				}
-
-				// ===========================================================================
-				// 8.) Map parent id of inserted products
-				// ===========================================================================
-				if (srcToDestId.Any() && segmenter.HasColumn("Id") && segmenter.HasColumn("ParentGroupedProductId") && !segmenter.IsIgnored("ParentGroupedProductId"))
-				{
-					segmenter.Reset();
-
-					while (context.Abort == DataExchangeAbortion.None && segmenter.ReadNextBatch())
-					{
-						var batch = segmenter.GetCurrentBatch<Product>();
-
-						_productRepository.Context.DetachAll(false);
-
-						try
-						{
-							ProcessProductMappings(context, batch, srcToDestId);
-						}
-						catch (Exception exception)
-						{
-							context.Result.AddError(exception, segmenter.CurrentSegment, "ProcessParentMappings");
-						}
-					}
-				}
 			}
 		}
 
