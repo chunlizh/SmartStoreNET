@@ -259,7 +259,7 @@ namespace SmartStore.Web.Controllers
 				model.BundlePerItemShoppingCart = item.BundleItem.BundleProduct.BundlePerItemShoppingCart;
 
 				model.AttributeInfo = _productAttributeFormatter.FormatAttributes(product, item.AttributesXml, _workContext.CurrentCustomer,
-					renderPrices: false, renderGiftCardAttributes: true, allowHyperlinks: false);
+					renderPrices: false, renderGiftCardAttributes: true, allowHyperlinks: true);
 
 				string bundleItemName = item.BundleItem.GetLocalized(x => x.Name);
 				if (bundleItemName.HasValue())
@@ -1480,7 +1480,7 @@ namespace SmartStore.Web.Controllers
 			var postedFile = Request.ToPostedFileResult();
 			if (postedFile == null)
 			{
-				throw new ArgumentException("No file uploaded");
+				throw new ArgumentException(T("Common.NoFileUploaded"));
 			}
 
             int fileMaxSize = _catalogSettings.FileUploadMaximumSizeBytes;
