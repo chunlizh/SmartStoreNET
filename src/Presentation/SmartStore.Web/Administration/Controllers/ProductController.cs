@@ -248,6 +248,10 @@ namespace SmartStore.Admin.Controllers
 			p.UpdatedOnUtc = DateTime.UtcNow;
 			p.AvailableEndDateTimeUtc = p.AvailableEndDateTimeUtc.ToEndOfTheDay();
 			p.SpecialPriceEndDateTimeUtc = p.SpecialPriceEndDateTimeUtc.ToEndOfTheDay();
+
+            p.IsPaidService = m.IsPaidService;
+            p.PaidServiceExpirationDays = m.PaidServiceExpirationDays;
+            p.PaidFields = m.PaidFields;
 		}
 
 		[NonAction]

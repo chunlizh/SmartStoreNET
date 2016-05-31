@@ -384,9 +384,17 @@ namespace SmartStore.Admin.Models.Catalog
         public IList<SelectListItem> AvailableQuantityUnits { get; set; }
 
 		public string ProductSelectCheckboxClass { get; set; }
-        
+
+        [SmartResourceDisplayName("Admin.Catalog.Products.Fields.IsPaidService")]
+        public bool IsPaidService { get; set; }
+        [SmartResourceDisplayName("Admin.Catalog.Products.Fields.PaidServiceExpirationDays")]
+        [UIHint("Int32Nullable")]
+        public int? PaidServiceExpirationDays { get; set; }
+        [SmartResourceDisplayName("Admin.Catalog.Products.Fields.PaidFields")]
+        public string PaidFields { get; set; }
+
         #region Nested classes
-        
+
         public class AddProductSpecificationAttributeModel : ModelBase
         {
             public AddProductSpecificationAttributeModel()

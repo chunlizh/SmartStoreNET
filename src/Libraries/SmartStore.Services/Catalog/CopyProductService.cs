@@ -223,7 +223,10 @@ namespace SmartStore.Services.Catalog
 				BundleTitleText = product.BundleTitleText,
 				BundlePerItemShipping = product.BundlePerItemShipping,
 				BundlePerItemPricing = product.BundlePerItemPricing,
-				BundlePerItemShoppingCart = product.BundlePerItemShoppingCart
+				BundlePerItemShoppingCart = product.BundlePerItemShoppingCart,
+                IsPaidService = product.IsPaidService,
+                PaidServiceExpirationDays = product.PaidServiceExpirationDays,
+                PaidFields = product.PaidFields
             };
 
             _productService.InsertProduct(productCopy);

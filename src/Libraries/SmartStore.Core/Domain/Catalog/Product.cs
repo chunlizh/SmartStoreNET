@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
@@ -736,7 +736,7 @@ namespace SmartStore.Core.Domain.Catalog
 		public bool BasePriceEnabled { get; set; }
 
 		/// <summary>
-		/// Measure unit for the base price (e.g. "kg", "g", "qm�" etc.)
+		/// Measure unit for the base price (e.g. "kg", "g", "qm²" etc.)
 		/// </summary>
 		[DataMember]
 		public string BasePriceMeasureUnit { get; set; }
@@ -1048,5 +1048,14 @@ namespace SmartStore.Core.Domain.Catalog
 			get { return _productBundleItems ?? (_productBundleItems = new HashSet<ProductBundleItem>()); }
 			protected set { _productBundleItems = value; }
 		}
-	}
+        /// <summary>
+        /// Gets or sets a value indicating whether the product is a paid service
+        /// </summary>
+        [DataMember]
+        public bool IsPaidService { get; set; }
+        [DataMember]
+        public int? PaidServiceExpirationDays { get; set; }
+        [DataMember]
+        public string PaidFields { get; set; }
+    }
 }

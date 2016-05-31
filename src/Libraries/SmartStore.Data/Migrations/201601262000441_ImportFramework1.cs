@@ -1,4 +1,4 @@
-namespace SmartStore.Data.Migrations
+ï»¿namespace SmartStore.Data.Migrations
 {
 	using System.Data.Entity.Migrations;
 	using Setup;
@@ -33,27 +33,27 @@ namespace SmartStore.Data.Migrations
 		{
 			builder.AddOrUpdate("Admin.DataExchange.Import.MultipleFilesSameFileTypeNote",
 				"For multiple import files please make sure that they are of the same file type and that the content follows the same pattern (e.g. same column headings).",
-				"Bei mehreren Importdateien ist darauf zu achten, dass diese vom selben Dateityp sind und deren Inhalt demselben Schema folgt (z.B. gleiche Spaltenüberschriften).");
+				"Bei mehreren Importdateien ist darauf zu achten, dass diese vom selben Dateityp sind und deren Inhalt demselben Schema folgt (z.B. gleiche SpaltenÃ¼berschriften).");
 
 			builder.AddOrUpdate("Admin.DataExchange.Import.ProfileEntitySelectNote",
 				"Please select an object that you want to import.",
-				"Wählen Sie bitte ein Objekt aus, das Sie importieren möchten.");
+				"WÃ¤hlen Sie bitte ein Objekt aus, das Sie importieren mÃ¶chten.");
 
 			builder.AddOrUpdate("Admin.DataExchange.Import.ProfileCreationNote",
 				"Please upload an import file, enter a meaningful name for the import profile and save.",
-				"Laden Sie bitte eine Importdatei hoch, legen Sie einen aussagekräftigen Namen für das Importprofil fest und speichern Sie.");
+				"Laden Sie bitte eine Importdatei hoch, legen Sie einen aussagekrÃ¤ftigen Namen fÃ¼r das Importprofil fest und speichern Sie.");
 
 			builder.AddOrUpdate("Admin.DataExchange.Import.AddAnotherFile",
 				"Add import file...",
-				"Importdatei hinzufügen...");
+				"Importdatei hinzufÃ¼gen...");
 
 			builder.AddOrUpdate("Admin.System.ScheduleTasks.RunNow.Progress.DataImportTask",
 				"The task is now running in the background. You will receive an email as soon as it is completed. The progress can be tracked in the import profile list.",
-				"Die Aufgabe wird jetzt im Hintergrund ausgeführt. Sie erhalten eine E-Mail, sobald sie abgeschlossen ist. Den Fortschritt können Sie in der Importprofilliste verfolgen.");
+				"Die Aufgabe wird jetzt im Hintergrund ausgefÃ¼hrt. Sie erhalten eine E-Mail, sobald sie abgeschlossen ist. Den Fortschritt kÃ¶nnen Sie in der Importprofilliste verfolgen.");
 
 			builder.AddOrUpdate("Admin.System.ScheduleTasks.RunNow.Progress.DataExportTask",
 				"The task is now running in the background. You will receive an email as soon as it is completed. The progress can be tracked in the export profile list.",
-				"Die Aufgabe wird jetzt im Hintergrund ausgeführt. Sie erhalten eine E-Mail, sobald sie abgeschlossen ist. Den Fortschritt können Sie in der Exportprofilliste verfolgen.");
+				"Die Aufgabe wird jetzt im Hintergrund ausgefÃ¼hrt. Sie erhalten eine E-Mail, sobald sie abgeschlossen ist. Den Fortschritt kÃ¶nnen Sie in der Exportprofilliste verfolgen.");
 
 			builder.AddOrUpdate("Admin.DataExchange.Import.DefaultProfileNames",
 				"My product import;My category import;My customer import;My newsletter subscription import",
@@ -65,16 +65,16 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Admin.Common.TotalRows", "Total rows", "Zeilen insgesamt");
 			builder.AddOrUpdate("Admin.Common.Skipped", "Skipped", "Ausgelassen");
-			builder.AddOrUpdate("Admin.Common.NewRecords", "New records", "Neue Datensätze");
+			builder.AddOrUpdate("Admin.Common.NewRecords", "New records", "Neue DatensÃ¤tze");
 			builder.AddOrUpdate("Admin.Common.Updated", "Updated", "Aktualisiert");
 			builder.AddOrUpdate("Admin.Common.Warnings", "Warnings", "Warnungen");
 			builder.AddOrUpdate("Admin.Common.Errors", "Errors", "Fehler");
-			builder.AddOrUpdate("Admin.Common.UnsupportedEntityType", "Unsupported entity type '{0}'", "Nicht unterstützter Entitätstyp '{0}'");
+			builder.AddOrUpdate("Admin.Common.UnsupportedEntityType", "Unsupported entity type '{0}'", "Nicht unterstÃ¼tzter EntitÃ¤tstyp '{0}'");
 			builder.AddOrUpdate("Admin.Common.DataExchange", "Data exchange", "Datenaustausch");
 
 			builder.AddOrUpdate("Admin.DataExchange.Import.CompletedEmail.Body",
 				"This is an automatic notification of store \"{0}\" about a recent data import. Summary:",
-				"Dies ist eine automatische Benachrichtung von Shop \"{0}\" über einen erfolgten Datenimport. Zusammenfassung:");
+				"Dies ist eine automatische Benachrichtung von Shop \"{0}\" Ã¼ber einen erfolgten Datenimport. Zusammenfassung:");
 
 			builder.AddOrUpdate("Admin.DataExchange.Import.CompletedEmail.Subject",
 				"Import of \"{0}\" has been finished",
@@ -92,17 +92,17 @@ namespace SmartStore.Data.Migrations
 				"Only update",
 				"Nur aktualisieren",
 				"If this option is enabled, only existing data is updated but no new records are added.",
-				"Ist diese Option aktiviert, werden nur vorhandene Daten aktualisiert, aber keine neue Datensätze hinzugefügt.");
+				"Ist diese Option aktiviert, werden nur vorhandene Daten aktualisiert, aber keine neue DatensÃ¤tze hinzugefÃ¼gt.");
 
 			builder.AddOrUpdate("Admin.DataExchange.Import.KeyFieldNames",
 				"Key fields",
-				"Schlüsselfelder",
+				"SchlÃ¼sselfelder",
 				"Existing records can be identified for updates on the basis of key fields. The key fields are processed in the order how they are defined here.",
-				"Anhand von Schlüsselfeldern können vorhandene Datensätze zwecks Aktualisierung identifiziert werden. Die Schlüsselfelder werden in der hier festgelegten Reihenfolge verarbeitet.");
+				"Anhand von SchlÃ¼sselfeldern kÃ¶nnen vorhandene DatensÃ¤tze zwecks Aktualisierung identifiziert werden. Die SchlÃ¼sselfelder werden in der hier festgelegten Reihenfolge verarbeitet.");
 
 			builder.AddOrUpdate("Admin.DataExchange.Import.Validate.OneKeyFieldRequired",
 				"At least one key field is required.",
-				"Es ist mindestens ein Schlüsselfeld erforderlich.");
+				"Es ist mindestens ein SchlÃ¼sselfeld erforderlich.");
 
 			builder.AddOrUpdate("Admin.DataExchange.ColumnMapping.Validate.MultipleMappedIgnored",
 				"The following object properties were multiple assigned and thus ignored: {0}",
@@ -110,24 +110,24 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Admin.DataExchange.ColumnMapping.Validate.MappingsReset",
 				"The stored field assignments are invalid due to the change of the delimiter and were reset.",
-				"Die gespeicherten Feldzuordnungen sind aufgrund der Änderung des Trennzeichens ungültig und wurden zurückgesetzt.");
+				"Die gespeicherten Feldzuordnungen sind aufgrund der Ã„nderung des Trennzeichens ungÃ¼ltig und wurden zurÃ¼ckgesetzt.");
 
 
 			builder.AddOrUpdate("Common.Download.NoDataAvailable",
 				"Download data is not available anymore.",
-				"Es sind keine Daten zum Herunterladen mehr verfügbar.");
+				"Es sind keine Daten zum Herunterladen mehr verfÃ¼gbar.");
 
 			builder.AddOrUpdate("Common.Download.NotAvailable",
 				"Download is not available any more.",
-				"Der Download ist nicht mehr verfügbar.");
+				"Der Download ist nicht mehr verfÃ¼gbar.");
 
 			builder.AddOrUpdate("Common.Download.SampleNotAvailable",
 				"Sample download is not available anymore.",
-				"Der Download einer Beispieldatei ist nicht mehr verfügbar.");
+				"Der Download einer Beispieldatei ist nicht mehr verfÃ¼gbar.");
 
 			builder.AddOrUpdate("Common.Download.HasNoSample",
 				"The product variant doesn't have a sample download.",
-				"Für die Produktvariante ist der Download einer Beispieldatei nicht verfügbar.");
+				"FÃ¼r die Produktvariante ist der Download einer Beispieldatei nicht verfÃ¼gbar.");
 
 			builder.AddOrUpdate("Common.Download.NotAllowed",
 				"Downloads are not allowed.",
@@ -143,7 +143,7 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Shipping.CouldNotLoadMethod",
 				"The shipping rate computation method could not be loaded.",
-				"Die Berechnungsmethode für Versandkosten konnte nicht geladen werden.");
+				"Die Berechnungsmethode fÃ¼r Versandkosten konnte nicht geladen werden.");
 
 			builder.AddOrUpdate("Shipping.OneActiveMethodProviderRequired",
 				"At least one shipping rate computation method provider is required to be active.",
@@ -155,7 +155,7 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Payment.MethodNotAvailable",
 				"The payment method is not available.",
-				"Die Zahlungsart steht nicht zur Verfügung.");
+				"Die Zahlungsart steht nicht zur VerfÃ¼gung.");
 
 			builder.AddOrUpdate("Payment.OneActiveMethodProviderRequired",
 				"At least one payment method provider is required to be active.",
@@ -163,7 +163,7 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Payment.RecurringPaymentNotSupported",
 				"Recurring payments are not supported by selected payment method.",
-				"Wiederkehrende Zahlungen sind für die gewählte Zahlungsart nicht möglich.");
+				"Wiederkehrende Zahlungen sind fÃ¼r die gewÃ¤hlte Zahlungsart nicht mÃ¶glich.");
 
 			builder.AddOrUpdate("Payment.RecurringPaymentNotActive",
 				"Recurring payment is not active.",
@@ -171,19 +171,19 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Payment.RecurringPaymentTypeUnknown",
 				"The recurring payment type is not supported.",
-				"Der Typ von wiederkehrender Zahlung wird nicht unterstützt.");
+				"Der Typ von wiederkehrender Zahlung wird nicht unterstÃ¼tzt.");
 
 			builder.AddOrUpdate("Payment.CannotCalculateNextPaymentDate",
 				"The next payment date could not be calculated.",
-				"Das Datum der nächsten Zahlung kann nicht ermittelt werden.");
+				"Das Datum der nÃ¤chsten Zahlung kann nicht ermittelt werden.");
 
 			builder.AddOrUpdate("Payment.PayingFailed",
 				"Unfortunately we can not handle this purchasing via your preferred payment method. Please select an alternate payment option to complete your order.",
-				"Leider können wir diesen Einkauf nicht über die gewünschte Zahlungsart abwickeln. Bitte wählen Sie eine alternative Zahlungsoption aus, um Ihre Bestellung abzuschließen.");
+				"Leider kÃ¶nnen wir diesen Einkauf nicht Ã¼ber die gewÃ¼nschte Zahlungsart abwickeln. Bitte wÃ¤hlen Sie eine alternative Zahlungsoption aus, um Ihre Bestellung abzuschlieÃŸen.");
 
 			builder.AddOrUpdate("Order.InitialOrderDoesNotExistForRecurringPayment",
 				"No initial order exists for the recurring payment.",
-				"Für die wiederkehrende Zahlung existiert kein Ausgangsauftrag.");
+				"FÃ¼r die wiederkehrende Zahlung existiert kein Ausgangsauftrag.");
 
 			builder.AddOrUpdate("Order.CannotCalculateShippingTotal",
 				"The shipping total could not be calculated.",
@@ -203,11 +203,11 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Order.CountryNotAllowedForBilling",
 				"The country '{0}' is not allowed for billing.",
-				"Eine Rechnungslegung ist für das Land '{0}' unzulässig.");
+				"Eine Rechnungslegung ist fÃ¼r das Land '{0}' unzulÃ¤ssig.");
 
 			builder.AddOrUpdate("Order.CountryNotAllowedForShipping",
 				"The country '{0}' is not allowed for shipping.",
-				"Ein Versand ist für das Land '{0}' unzulässig.");
+				"Ein Versand ist fÃ¼r das Land '{0}' unzulÃ¤ssig.");
 
 			builder.AddOrUpdate("Order.NoRecurringProducts",
 				"There are no recurring products.",
@@ -235,15 +235,15 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Order.CannotRefund",
 				"Cannot do refund for order.",
-				"Eine Rückerstattung ist für diesen Auftrag nicht möglich.");
+				"Eine RÃ¼ckerstattung ist fÃ¼r diesen Auftrag nicht mÃ¶glich.");
 
 			builder.AddOrUpdate("Order.CannotPartialRefund",
 				"Cannot do partial refund for order.",
-				"Eine Teilrückerstattung ist für diesen Auftrag nicht möglich.");
+				"Eine TeilrÃ¼ckerstattung ist fÃ¼r diesen Auftrag nicht mÃ¶glich.");
 
 			builder.AddOrUpdate("Order.CannotVoid",
 				"Cannot do void for order.",
-				"Eine Stornierung dieses Auftrages ist nicht möglich.");
+				"Eine Stornierung dieses Auftrages ist nicht mÃ¶glich.");
 
 			builder.AddOrUpdate("Shipment.AlreadyShipped",
 				"This shipment is already shipped.",
@@ -259,11 +259,11 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Checkout.AnonymousNotAllowed",
 				"An anonymous checkout is not allowed.",
-				"Ein anonymer Checkout ist nicht zulässig.");
+				"Ein anonymer Checkout ist nicht zulÃ¤ssig.");
 
 			builder.AddOrUpdate("Common.Error.InvalidEmail",
 				"The email address is not valid.",
-				"Die E-Mail-Adresse ist ungültig.");
+				"Die E-Mail-Adresse ist ungÃ¼ltig.");
 
 			builder.AddOrUpdate("Common.Error.NoActiveLanguage",
 				"No active language could be loaded.",
@@ -275,11 +275,11 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Admin.OrderNotice.RecurringPaymentCancellationError",
 				"Unable to cancel recurring payment for order {0}.",
-				"Es ist ein Fehler bei der Stornierung einer wiederkehrenden Zahlung für Auftrag {0} aufgetreten.");
+				"Es ist ein Fehler bei der Stornierung einer wiederkehrenden Zahlung fÃ¼r Auftrag {0} aufgetreten.");
 
 			builder.AddOrUpdate("Admin.OrderNotice.OrderRefundError",
 				"Unable to refund order {0}.",
-				"Es ist ein Fehler bei einer Rückerstattung zu Auftrag {0} aufgetreten.");
+				"Es ist ein Fehler bei einer RÃ¼ckerstattung zu Auftrag {0} aufgetreten.");
 
 			builder.AddOrUpdate("Admin.OrderNotice.OrderPartiallyRefundError",
 				"Unable to partially refund order {0}.",
@@ -293,7 +293,7 @@ namespace SmartStore.Data.Migrations
 				"Sort filter results by number of matches",
 				"Filterergebnisse nach Trefferanzahl sortieren",
 				"Specifies to sort filter results by number of matches in descending order. If this option is deactivated then the result is sorted by the display order of the values.",
-				"Legt fest, das Filterergebnisse absteigend nach der Anzahl an Übereinstimmungen sortiert werden. Ist diese Option deaktiviert, so wird in der für die Werte festgelegten Reihenfolge sortiert.");
+				"Legt fest, das Filterergebnisse absteigend nach der Anzahl an Ãœbereinstimmungen sortiert werden. Ist diese Option deaktiviert, so wird in der fÃ¼r die Werte festgelegten Reihenfolge sortiert.");
 
 			builder.AddOrUpdate("Wishlist.IsDisabled",
 				"The wishlist is disabled.",
@@ -321,7 +321,7 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Polls.NotAvailable",
 				"The poll is not available.",
-				"Die Umfrage ist nicht verfügbar.");
+				"Die Umfrage ist nicht verfÃ¼gbar.");
 
 			builder.AddOrUpdate("Install.LanguageNotRegistered",
 				"The install language '{0}' is not registered.",
@@ -339,15 +339,15 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Common.CaptchaUnableToVerify",
 				"The API call to verify a CAPTCHA has failed.",
-				"Der API-Aufruf zur Prüfung eines CAPTCHAs ist fehlgeschlagen.");
+				"Der API-Aufruf zur PrÃ¼fung eines CAPTCHAs ist fehlgeschlagen.");
 
 			builder.AddOrUpdate("Common.WrongCaptcha",
 				"Please confirm that you are not a \"robot\".",
-				"Bitte bestätigen Sie, dass Sie kein \"Roboter\" sind.");
+				"Bitte bestÃ¤tigen Sie, dass Sie kein \"Roboter\" sind.");
 
 			builder.AddOrUpdate("DownloadableProducts.UserAgreementConfirmation",
 				"Yes, I agree to the <a href='javascript:void(0)' data-id='{0}' class='download-user-agreement'>user agreement</a> for this product.",
-				"Ja, ich stimme der <a href='javascript:void(0)' data-id='{0}' class='download-user-agreement'>Nutzungsvereinbarung</a> für dieses Produkt zu.");
+				"Ja, ich stimme der <a href='javascript:void(0)' data-id='{0}' class='download-user-agreement'>Nutzungsvereinbarung</a> fÃ¼r dieses Produkt zu.");
 
 			builder.AddOrUpdate("DownloadableProducts.HasNoUserAgreement",
 				"The product has no user agreement.",
@@ -355,7 +355,7 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Checkout.DownloadUserAgreement.PleaseAgree",
 				"Please agree to the user agreement for downloadable products.",
-				"Bitte stimmen Sie der Nutzungsvereinbarung für herunterladbare Produkte zu.");
+				"Bitte stimmen Sie der Nutzungsvereinbarung fÃ¼r herunterladbare Produkte zu.");
 
 
 			builder.AddOrUpdate("Admin.Configuration.Settings.ShoppingCart.OrderConfirmationPage",
@@ -364,9 +364,9 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Admin.Configuration.Settings.ShoppingCart.ShowEsdRevocationWaiverBox",
 				"Show revocation waiver box for electronic services",
-				"Widerrufsverzichtbox für elektronische Leistungen anzeigen",
+				"Widerrufsverzichtbox fÃ¼r elektronische Leistungen anzeigen",
 				"Specifies whether the customer must agree a revocation waiver for electronic services on the order confirmation page.",
-				"Legt fest, ob der Kunde auf der Bestellabschlussseite einem Widerrufsverzicht für elektronische Leistungen zustimmen muss.");
+				"Legt fest, ob der Kunde auf der Bestellabschlussseite einem Widerrufsverzicht fÃ¼r elektronische Leistungen zustimmen muss.");
 
 			builder.AddOrUpdate("Admin.Configuration.Settings.ShoppingCart.ShowCommentBox",
 				"Show comment box",
@@ -376,25 +376,25 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Admin.Configuration.Settings.ShoppingCart.ShowConfirmOrderLegalHint",
 				"Show legal hints in order summary",
-				"Rechtliche Hinweise in der Warenkorbübersicht anzeigen",
+				"Rechtliche Hinweise in der WarenkorbÃ¼bersicht anzeigen",
 				"Specifies whether to show hints in order summary on the confirm order page. This text can be altered in the language resources.",
-				"Legt fest, ob rechtliche Hinweise in der Warenkorbübersicht auf der Bestellabschlußseite angezeigt werden. Dieser Text kann in den Sprachresourcen geändert werden.");
+				"Legt fest, ob rechtliche Hinweise in der WarenkorbÃ¼bersicht auf der BestellabschluÃŸseite angezeigt werden. Dieser Text kann in den Sprachresourcen geÃ¤ndert werden.");
 
 
 			builder.AddOrUpdate("Checkout.EsdRevocationWaiverConfirmation",
 				"Yes, I want access to the digital content immediately and know that my right of revocation expires with the access.",
-				"Ja, ich möchte sofort Zugang zu dem digitalen Inhalt und weiß, dass mein Widerrufsrecht mit dem Zugang erlischt.");
+				"Ja, ich mÃ¶chte sofort Zugang zu dem digitalen Inhalt und weiÃŸ, dass mein Widerrufsrecht mit dem Zugang erlischt.");
 
 			builder.AddOrUpdate("Checkout.EsdRevocationWaiverConfirmation.PleaseAgree",
 				"Please confirm that you would like access to the digital content immediately.",
-				"Bitte bestätigen Sie, dass Sie sofort Zugang zu dem digitalen Inhalt wünschen.");
+				"Bitte bestÃ¤tigen Sie, dass Sie sofort Zugang zu dem digitalen Inhalt wÃ¼nschen.");
 
 
 			builder.AddOrUpdate("Admin.Configuration.Settings.DataExchange.MaxFileNameLength",
 				"Maximum length of file and folder names",
-				"Maximale Länge von Datei- und Ordnernamen",
+				"Maximale LÃ¤nge von Datei- und Ordnernamen",
 				"Specifies the maximum length of file and folder names created during an import or export.",
-				"Legt die maximale Länge von Datei- und Ordnernamen fest, die im Rahmen eines Imports\\Exports erzeugt wurden.");
+				"Legt die maximale LÃ¤nge von Datei- und Ordnernamen fest, die im Rahmen eines Imports\\Exports erzeugt wurden.");
 
 			builder.AddOrUpdate("Admin.Configuration.Settings.DataExchange.ImageImportFolder",
 				"Image folder (relative path)",
@@ -404,17 +404,17 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Admin.Configuration.Settings.DataExchange.ImageDownloadTimeout",
 				"Timeout for image download (minutes)",
-				"Zeitlimit für Bilder-Download (Minuten)",
+				"Zeitlimit fÃ¼r Bilder-Download (Minuten)",
 				"Specifies the timeout for the image download in minutes.",
-				"Legt das Zeitlimit für den Bilder-Download in Minuten fest.");
+				"Legt das Zeitlimit fÃ¼r den Bilder-Download in Minuten fest.");
 
 			builder.AddOrUpdate("Admin.System.Maintenance.SqlQuery.Succeeded",
 				"The SQL command was executed successfully.",
-				"Die SQL Anweisung wurde erfolgreich ausgeführt.");
+				"Die SQL Anweisung wurde erfolgreich ausgefÃ¼hrt.");
 
 			builder.AddOrUpdate("Admin.DataExchange.Import.KeyFieldNames.Note",
 				"Please only use the ID field as a key field, if the data sourced from the same database to which it will be imported. Otherwise it is possible that the wrong records are updated.",
-				"Benutzen Sie das ID-Feld bitte nur dann als Schlüsselfeld, wenn die Daten aus der derselben Datenbank stammen, in der sie importiert werden sollen. Ansonsten werden u.U. die falschen Datensätze aktualisiert.");
+				"Benutzen Sie das ID-Feld bitte nur dann als SchlÃ¼sselfeld, wenn die Daten aus der derselben Datenbank stammen, in der sie importiert werden sollen. Ansonsten werden u.U. die falschen DatensÃ¤tze aktualisiert.");
 
 			builder.AddOrUpdate("Admin.Configuration.Settings.RewardPoints.RoundDownRewardPoints",
 				"Round down points",
@@ -430,7 +430,7 @@ namespace SmartStore.Data.Migrations
 				"Subscribe to newsletters",
 				"Abonnieren von Newslettern",
 				"Specifies if customers can subscribe to newsletters when ordering and if the checkbox is enabled by default.",
-				"Legt fest, ob Kunden bei einer Bestellung Newsletter abonnieren können und ob die Checkbox standardmäßig aktiviert ist.");
+				"Legt fest, ob Kunden bei einer Bestellung Newsletter abonnieren kÃ¶nnen und ob die Checkbox standardmÃ¤ÃŸig aktiviert ist.");
 
 			builder.AddOrUpdate("Enums.SmartStore.Core.Domain.Orders.CheckoutNewsLetterSubscription.None", "Do not show", "Nicht anzeigen");
 			builder.AddOrUpdate("Enums.SmartStore.Core.Domain.Orders.CheckoutNewsLetterSubscription.Deactivated", "Show deactivated", "Deaktiviert anzeigen");
@@ -452,15 +452,15 @@ namespace SmartStore.Data.Migrations
 
 			builder.AddOrUpdate("Admin.Orders.Fields.CaptureTransactionID",
 				"Capture transaction ID",
-				"Transaktions-ID für Buchung",
+				"Transaktions-ID fÃ¼r Buchung",
 				"Capture transaction identifier received from your payment gateway.",
-				"Vom Zahlungsanbieter erhaltene Transaktions-ID für die Buchung.");
+				"Vom Zahlungsanbieter erhaltene Transaktions-ID fÃ¼r die Buchung.");
 
 			builder.AddOrUpdate("Admin.Orders.Fields.AuthorizationTransactionID",
 				"Authorization transaction ID",
-				"Transaktions-ID für Autorisierung",
+				"Transaktions-ID fÃ¼r Autorisierung",
 				"Authorization transaction identifier received from your payment gateway.",
-				"Vom Zahlungsanbieter erhaltene Transaktions-ID für die Autorisierung.");
+				"Vom Zahlungsanbieter erhaltene Transaktions-ID fÃ¼r die Autorisierung.");
 
 			builder.AddOrUpdate("Admin.Configuration.Settings.Catalog.SearchDescriptions",
 				"Search product description",

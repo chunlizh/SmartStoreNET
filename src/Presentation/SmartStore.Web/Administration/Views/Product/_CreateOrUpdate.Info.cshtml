@@ -25,6 +25,7 @@
         $("#@Html.FieldIdFor(model => model.IsRecurring)").click(toggleRecurring);
         $("#@Html.FieldIdFor(model => model.IsShipEnabled)").click(toggleShipping);
         $("#@Html.FieldIdFor(model => model.IsTaxExempt)").click(toggleTax);
+        $("#@Html.FieldIdFor(model => model.IsPaidService)").click(togglePaidService);
 
     	toggleProductType();
         toggleRequireOtherProducts();
@@ -33,7 +34,8 @@
         toggleRecurring();
         toggleShipping();
         toggleTax();
-        
+        togglePaidService();
+
     	// toggle homepage display order
     	$('#ShowOnHomePage').change(function () {
     		$('#pnlHomePageDisplayOrder').toggle($(this).is(':checked'));
@@ -54,6 +56,16 @@
     		});
     	});
     });
+
+    function togglePaidService() {
+        if ($('#@Html.FieldIdFor(model => model.IsPaidService)').is(':checked')) {
+            $('#pnlPaidServiceExpirationDays').show();
+            $('#pnlPaidFields').show();
+        } else {
+            $('#pnlPaidServiceExpirationDays').hide();
+            $('#pnlPaidFields').hide();
+        }
+    }
 
     function toggleProductType() {
         var selectedProductTypeId = $("#@Html.FieldIdFor(model => model.ProductTypeId)").val();
@@ -790,7 +802,40 @@
 			</td>
 		</tr>
 	</table>
-
+    <table class="adminContent" id="group-PaidService">
+        <tr class="adminSeparator">
+            <td colspan="2">
+                <hr />
+            </td>
+        </tr>
+            <tr>
+                <td class="adminTitle">
+                    @Html.SmartLabelFor(model => model.IsPaidService)
+                </td>
+                <td class="adminData">
+                    @Html.EditorFor(model => model.IsPaidService)
+                    @Html.ValidationMessageFor(model => model.IsPaidService)
+                </td>
+            </tr>
+            <tr id="pnlPaidServiceExpirationDays">
+                <td class="adminTitle">
+                    @Html.SmartLabelFor(model => model.PaidServiceExpirationDays)
+                </td>
+                <td class="adminData">
+                    @Html.EditorFor(model => model.PaidServiceExpirationDays)
+                    @Html.ValidationMessageFor(model => model.PaidServiceExpirationDays)
+                </td>
+            </tr>
+            <tr id="pnlPaidFields">
+                <td class="adminTitle">
+                    @Html.SmartLabelFor(model => model.PaidFields)
+                </td>
+                <td class="adminData">
+                    @Html.TextBoxFor(model => model.PaidFields, new { @class = "input-large" })
+                    @Html.ValidationMessageFor(model => model.PaidFields)
+                </td>
+            </tr>
+    </table>
 	<script>
 		$(function () {
 			var tagChooser = $("#@Html.FieldIdFor(x => x.ProductTags)");
