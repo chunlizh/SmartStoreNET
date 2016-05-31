@@ -14,7 +14,7 @@ using SmartStore.Services.Tax;
 
 namespace SmartStore.Services.Catalog
 {
-    public static class ProductExtensions
+	public static class ProductExtensions
     {
 		public static ProductVariantAttributeCombination MergeWithCombination(this Product product, string selectedAttributes)
         {
@@ -299,7 +299,7 @@ namespace SmartStore.Services.Catalog
 		}
 
         /// <summary>
-        /// Gets the base price
+        /// Gets the base price info
         /// </summary>
         /// <param name="product">Product</param>
         /// <param name="localizationService">Localization service</param>
@@ -310,7 +310,7 @@ namespace SmartStore.Services.Catalog
 		/// <param name="currency">Target currency</param>
 		/// <param name="priceAdjustment">Price adjustment</param>
 		/// <param name="languageIndependent">Whether the result string should be language independent</param>
-        /// <returns>The base price</returns>
+        /// <returns>The base price info</returns>
         public static string GetBasePriceInfo(this Product product, ILocalizationService localizationService, IPriceFormatter priceFormatter,
             ICurrencyService currencyService, ITaxService taxService, IPriceCalculationService priceCalculationService,
             Currency currency, decimal priceAdjustment = decimal.Zero, bool languageIndependent = false)
@@ -327,24 +327,56 @@ namespace SmartStore.Services.Catalog
 
                 var taxrate = decimal.Zero;
                 var currentPrice = priceCalculationService.GetFinalPrice(product, workContext.CurrentCustomer, true);
-                decimal price = taxService.GetProductPrice(product, decimal.Add(currentPrice, priceAdjustment), out taxrate);
+                var price = taxService.GetProductPrice(product, decimal.Add(currentPrice, priceAdjustment), out taxrate);
                 
                 price = currencyService.ConvertFromPrimaryStoreCurrency(price, currency);
 
-				decimal basePriceValue = Convert.ToDecimal((price / product.BasePriceAmount) * product.BasePriceBaseAmount);
+				return product.GetBasePriceInfo(price, localizationService, priceFormatter, currency, languageIndependent);
+			}
 
-                string basePrice = priceFormatter.FormatPrice(basePriceValue, true, currency);
-				string unit = "{0} {1}".FormatWith(product.BasePriceBaseAmount, product.BasePriceMeasureUnit);
+			return "";
+        }
+
+		/// <summary>
+		/// Gets the base price info
+		/// </summary>
+		/// <param name="product">Product</param>
+		/// <param name="productPrice">The calculated product price</param>
+		/// <param name="localizationService">Localization service</param>
+		/// <param name="priceFormatter">Price formatter</param>
+		/// <param name="currency">Target currency</param>
+		/// <param name="languageIndependent">Whether the result string should be language independent</param>
+		/// <returns>The base price info</returns>
+		public static string GetBasePriceInfo(this Product product,
+			decimal productPrice,
+			ILocalizationService localizationService,
+			IPriceFormatter priceFormatter,
+			Currency currency,
+			bool languageIndependent = false)
+		{
+			if (product.BasePriceHasValue && product.BasePriceAmount != Decimal.Zero)
+			{
+				var value = Convert.ToDecimal((productPrice / product.BasePriceAmount) * product.BasePriceBaseAmount);
+				var valueFormatted = priceFormatter.FormatPrice(value, true, currency);
+				var amountFormatted = Math.Round(product.BasePriceAmount.Value, 2).ToString("G29");
+
+				var result = "{0} {1} ({2} / {3} {1})".FormatInvariant(
+					amountFormatted,
+					product.BasePriceMeasureUnit,
+					valueFormatted,
+					product.BasePriceBaseAmount
+				);
 
 				if (languageIndependent)
 				{
-					return "{0} / {1}".FormatWith(basePrice, unit);
+					return result;
 				}
 
-				return localizationService.GetResource("Products.BasePriceInfo").FormatWith(basePrice, unit);
-            }
+				return string.Concat(localizationService.GetResource("Common.Content"), ": ", result);
+			}
+
 			return "";
-        }
+		}
 
 		public static string GetProductTypeLabel(this Product product, ILocalizationService localizationService)
 		{
