@@ -27,8 +27,10 @@
 * Added paging to frontend order list
 * Added paging to backend checkout attribute list
 * #977 Show PAngV base/delivery amount also
+* Updated LiveEngage LiveChat plugin
 
 ### Bugfixes
+* TaskScheduler could fail polling when primary store url is an external IP address
 * Fixed ajax cache issue when saving payment or shipping restrictions. Internet Explorer showed the old data state (before storage).
 * "The provider failed at the Execute method: Member 'CurrentValues' cannot be called for the entity of type 'Product'" when exporting product attribute combinations
 * Bundles without selected attributes could throw an exception on product detail page
@@ -50,6 +52,7 @@
 * #971 Product is added to cart automatically if it has a non-required file upload attribute
 * #973 Bundle item upload is nowhere linked
 * Base price in product list ignored PriceDisplayType (catalog settings) and possibly displayed the wrong base price info
+* Private messages: Fixes "No route in the route table matches the supplied values"
 
 
 ## SmartStore.NET 2.5
