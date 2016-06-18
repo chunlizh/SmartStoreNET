@@ -168,7 +168,7 @@ namespace SmartStore.Web.Controllers
 				}
 			}
 
-			//prepare the model
+			// prepare the model
 			var selectedAttributes = new NameValueCollection();
 
 			selectedAttributes.ConvertAttributeQueryData(
@@ -176,6 +176,8 @@ namespace SmartStore.Web.Controllers
 				product.ProductType == ProductType.BundledProduct && product.BundlePerItemPricing ? 0 : product.Id);
 
 			var model = _helper.PrepareProductDetailsPageModel(product, selectedAttributes: selectedAttributes);
+
+			_helper.SelectProductAttributeValues(model, Request.QueryString);
 
 			//save as recently viewed
 			_recentlyViewedProductsService.AddProductToRecentlyViewedList(product.Id);

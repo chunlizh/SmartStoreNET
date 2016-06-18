@@ -3,9 +3,10 @@
 ## SmartStore.NET 2.5.1
 
 ### Highlights
+* Major improvements in Importer: better field mapping, higher performance, bug fixes etc.
 * #637 Integrated PayPal PLUS payment provider
 * #932 Implement paydirekt payment plugin
-* Major improvements in Importer: better field mapping, higher performance, bug fixes etc.
+* New Viveum payment plugin
 
 ### New Features
 * #637 Integrated PayPal PLUS payment Provider
@@ -16,11 +17,14 @@
 * Import localized SEO names for product and categories
 * #477 Implement option to specify the number of exported and imported pictures
 * #859 Make checkout attributes suitable for multi-stores
+* Product details: Select attribute and gift card values by query string parameters
 
 ### Improvements
 * Major improvements in Importer: better field mapping, higher performance, bug fixes etc.
 * (Dev) Publishing SmartStore.Web from within Visual Studio now deploys the project correctly. No need to execute ClickToBuild.cmd anymore. Just publish directly to any target, including Azure.
 * Localization & SEO: language switcher now takes language specific SEO slugs into account when building links
+* Smarter import of plugin resource files with graceful fallbacks (de-DE > de > de-* > en-US > en > en-* > *)
+* (Perf) Faster language resource file import
 * Exports the product detail link including the attribute query string when exporting attribute combinations
 * #918 Compare products: Display base price information
 * Export email attachments needs to be stored in database because the temp file may not exist anymore when sending the email
@@ -54,6 +58,8 @@
 * #973 Bundle item upload is nowhere linked
 * Base price in product list ignored PriceDisplayType (catalog settings) and possibly displayed the wrong base price info
 * Private messages: Fixes "No route in the route table matches the supplied values"
+* Payone: Hash string incorrect for frontend API payments where the order has more than 9 products
+* Export mail notification: Download link not working if SSL is enabled
 
 
 ## SmartStore.NET 2.5
