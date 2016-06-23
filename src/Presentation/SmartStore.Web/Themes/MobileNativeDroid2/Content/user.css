@@ -1,0 +1,13 @@
+﻿//
+// Customize the (child) theme here with css overrides
+// or new selectors (for users)
+// --------------------------------------------------
+.noshadow * {
+			-webkit-box-shadow: none !important;
+			-moz-box-shadow: none !important;
+			box-shadow: none !important;
+		}
+		form.ui-mini .ui-field-contain fieldset.ui-controlgroup legend small {
+			color: #666;
+		}
+

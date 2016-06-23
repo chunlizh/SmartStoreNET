@@ -1,0 +1,159 @@
+﻿@using SmartStore.Web.Framework;
+@using SmartStore.Web.Framework.UI;
+@using SmartStore.WeixinPay.Models;
+
+@model WeixinPayModel
+
+@{
+    Layout = "";
+	Html.AddCssFileParts(true, Url.Content("~/Plugins/SmartStore.WeixinPay/Content/smartstore.weixinpay.css"));
+}
+
+<div class="plugin-configuration">
+	<div>
+		<div class="alert alert-info">
+			<button class="close" data-dismiss="alert">×</button>
+			@Html.Raw(@T("Plugins.Payments.WeixinPay.AdminInstruction"))
+		</div>
+	</div>
+	<div>
+		<a href="https://pay.weixin.qq.com" target="_blank">
+			<img src="@Url.Content("~/Plugins/SmartStore.WeixinPay/Content/images/logo.gif")" alt="weixin payments" class="config-logo" />
+		</a>
+	</div>
+</div>
+
+@Html.Action("StoreScopeConfiguration", "Setting", new { area = "Admin" })
+
+@using (Html.BeginForm())
+{
+	<table id="PayConfigTable" class="adminContent">
+	<tr>
+		<td colspan="2">
+			<div class="admin-config-group">
+				<div class="title">
+					@Model.ConfigGroups.SafeGet(0)
+				</div>
+			</div>
+		</td>
+	</tr>
+    <tr>
+        <td class="adminTitle">
+            @Html.SmartLabelFor(model => model.UseSandbox)
+        </td>
+        <td class="adminData">
+            @Html.SettingEditorFor(model => model.UseSandbox)
+            @Html.ValidationMessageFor(model => model.UseSandbox)
+        </td>
+    </tr>
+    <tr>
+        <td class="adminTitle">
+            @Html.SmartLabelFor(model => model.APPID)
+        </td>
+        <td class="adminData">
+            @Html.SettingEditorFor(model => model.APPID)
+            @Html.ValidationMessageFor(model => model.APPID)
+        </td>
+    </tr>
+    <tr>
+        <td class="adminTitle">
+            @Html.SmartLabelFor(model => model.MCHID)
+        </td>
+        <td class="adminData">
+            @Html.SettingEditorFor(model => model.MCHID)
+            @Html.ValidationMessageFor(model => model.MCHID)
+        </td>
+    </tr>
+    <tr>
+        <td class="adminTitle">
+            @Html.SmartLabelFor(model => model.KEY)
+        </td>
+        <td class="adminData">
+            @Html.SettingEditorFor(model => model.KEY)
+            @Html.ValidationMessageFor(model => model.KEY)
+        </td>
+    </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.SmartLabelFor(model => model.APPSECRET)
+            </td>
+            <td class="adminData">
+                @Html.SettingEditorFor(model => model.APPSECRET)
+                @Html.ValidationMessageFor(model => model.APPSECRET)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.SmartLabelFor(model => model.SSLCERT_PATH)
+            </td>
+            <td class="adminData">
+                @Html.SettingEditorFor(model => model.SSLCERT_PATH)
+                @Html.ValidationMessageFor(model => model.SSLCERT_PATH)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.SmartLabelFor(model => model.SSLCERT_PASSWORD)
+            </td>
+            <td class="adminData">
+                @Html.SettingEditorFor(model => model.SSLCERT_PASSWORD)
+                @Html.ValidationMessageFor(model => model.SSLCERT_PASSWORD)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.SmartLabelFor(model => model.ReportLevel)
+            </td>
+            <td class="adminData">
+                @Html.SettingEditorFor(model => model.ReportLevel)
+                @Html.ValidationMessageFor(model => model.ReportLevel)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.SmartLabelFor(model => model.LogLevel)
+            </td>
+            <td class="adminData">
+                @Html.SettingEditorFor(model => model.LogLevel)
+                @Html.ValidationMessageFor(model => model.LogLevel)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.SmartLabelFor(model => model.AddOrderNotes)
+            </td>
+            <td class="adminData">
+                @Html.SettingEditorFor(model => model.AddOrderNotes)
+                @Html.ValidationMessageFor(model => model.AddOrderNotes)
+            </td>
+        </tr>
+    @*<tr>
+        <td class="adminTitle">
+            @Html.SmartLabelFor(model => model.Marketplace)
+        </td>
+        <td class="adminData">
+			@Html.SettingOverrideCheckbox(model => model.Marketplace)
+			@Html.DropDownListFor(model => model.Marketplace, new List<SelectListItem>()
+			{
+				new SelectListItem { Text = @T("Plugins.Payments.AmazonPay.Marketplace.De"), Value = "de" },
+				new SelectListItem { Text = @T("Plugins.Payments.AmazonPay.Marketplace.Uk"), Value = "uk" }
+			})
+            @Html.ValidationMessageFor(model => model.Marketplace)
+        </td>
+    </tr>*@
+    <tr>
+        <td class="adminTitle">&nbsp;</td>
+        <td class="adminData">
+            <button type="submit" name="save" class="btn btn-primary" value="save">
+                <i class="fa fa-check"></i>&nbsp;@T("Admin.Common.Save")
+            </button>
+        </td>
+    </tr>
+	</table>
+}
+
+<script type="text/javascript">
+	jQuery(document).ready(function () {
+		//amazonpay.init();
+	});
+</script>

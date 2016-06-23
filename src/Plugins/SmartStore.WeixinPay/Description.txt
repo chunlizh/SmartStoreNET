@@ -1,0 +1,10 @@
+﻿FriendlyName: WeixinPay
+Description: 提供微信支付.
+SystemName: SmartStore.WeixinPay
+Group: Payment
+Version: 2.5.0.2
+MinAppVersion: 2.5.0
+DisplayOrder: 1
+FileName: SmartStore.WeixinPay.dll
+ResourceRootKey: Plugins.SmartStore.WeixinPay
+Url: http://community.smartstore.com/marketplace/file/29-WeixinPay-payment-plugins/
